@@ -5,6 +5,15 @@ import streamlit as st
 from research_ai.ui import citation_explorer, paper_comparison, paper_dashboard, paper_viewer, research_chat, trend_dashboard
 from research_ai.ui.backend import build_analytics_snapshot, load_library, paper_lookup, refresh_library, save_uploaded_files, system_status
 
+PAGES = [
+    "Paper Dashboard",
+    "Paper Viewer",
+    "Research Chat",
+    "Paper Comparison",
+    "Citation Explorer",
+    "Trend Dashboard",
+]
+
 st.set_page_config(page_title="Research Intelligence System", layout="wide")
 
 
@@ -31,6 +40,9 @@ def _load_analytics_cached(papers_signature: tuple[str, ...]):
 
 
 def main() -> None:
+    if "current_page" not in st.session_state:
+        st.session_state["current_page"] = "Paper Dashboard"
+
     st.sidebar.title("Research Intelligence")
     st.sidebar.caption("Semantic discovery, grounded QA, and research analytics in one workspace.")
 
@@ -75,7 +87,8 @@ def main() -> None:
             except Exception as exc:
                 st.sidebar.error(f"Refresh failed: {exc}")
 
-    page = st.sidebar.radio("Navigate", options=["Paper Dashboard", "Paper Viewer", "Research Chat", "Paper Comparison", "Citation Explorer", "Trend Dashboard"])
+    default_index = PAGES.index(st.session_state["current_page"]) if st.session_state["current_page"] in PAGES else 0
+    st.session_state["current_page"] = st.sidebar.radio("Navigate", options=PAGES, index=default_index)
 
     with st.sidebar.expander("Demo Flow", expanded=False):
         st.write("1. Upload multiple PDFs from your machine.")
@@ -84,10 +97,9 @@ def main() -> None:
         st.write("4. Open a paper, summarize it, and ask questions.")
         st.write("5. Compare papers and inspect citation/trend analytics.")
 
+    page = st.session_state["current_page"]
     if page == "Paper Dashboard":
-        selected = paper_dashboard.render(papers, status)
-        if selected:
-            st.sidebar.success("Paper selected. Open the viewer to inspect details.")
+        paper_dashboard.render(papers, status)
     elif page == "Paper Viewer":
         paper_viewer.render(papers, lookup, analytics_snapshot)
     elif page == "Research Chat":

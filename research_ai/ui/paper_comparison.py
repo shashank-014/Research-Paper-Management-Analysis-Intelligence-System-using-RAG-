@@ -26,8 +26,10 @@ def render(papers, paper_lookup):
             try:
                 result = compare_papers(question, paper_ids=selected_ids)
                 st.session_state["last_comparison_result"] = result
+                st.session_state.pop("last_comparison_error", None)
             except Exception as exc:
                 st.session_state["last_comparison_error"] = str(exc)
+                st.session_state.pop("last_comparison_result", None)
 
     result = st.session_state.get("last_comparison_result")
     error = st.session_state.get("last_comparison_error")

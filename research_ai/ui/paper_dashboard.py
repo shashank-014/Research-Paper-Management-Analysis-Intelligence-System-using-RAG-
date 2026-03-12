@@ -12,7 +12,7 @@ def render(papers, status):
 
     if not papers:
         st.warning("No parsed papers found yet. Use the sidebar refresh action to parse PDFs and build the index.")
-        return None
+        return
 
     info_cols = st.columns(4)
     info_cols[0].metric("Parsed Papers", status["paper_count"])
@@ -52,23 +52,25 @@ def render(papers, status):
         if selected_venue != "All":
             search_filters["venue"] = selected_venue
         try:
-            search_results = semantic_search(query, filters=search_filters or None, top_k=12, index_dir=INDEX_DIR)
+            raw_results = semantic_search(query, filters=search_filters or None, top_k=18, index_dir=INDEX_DIR)
+            search_results = _group_search_results(raw_results)
         except Exception as exc:
             st.error(f"Semantic search is unavailable: {exc}")
     elif query.strip() and not status["index_ready"]:
         st.info("Build the FAISS index from the sidebar before using semantic search.")
 
-    selected_paper_id = None
     if search_results:
         st.subheader("Semantic Matches")
         for item in search_results:
             with st.container(border=True):
                 st.markdown(f"**{item['paper_title']}**")
-                st.caption(f"Section: {item['section']} | Score: {item['score']:.4f}")
-                st.write(item["text"][:360] + ("..." if len(item["text"]) > 360 else ""))
-                if st.button("Open Paper", key=f"search-open-{item['chunk_id']}"):
-                    selected_paper_id = item["paper_id"]
-                    st.session_state["selected_paper_id"] = selected_paper_id
+                st.caption(f"Best score: {item['score']:.4f} | Year: {item.get('year') or 'Unknown'} | Venue: {item.get('venue') or 'Unknown'}")
+                for section in item["sections"]:
+                    st.write(f"**{section['section']}**: {section['text']}")
+                if st.button("Open Paper", key=f"search-open-{item['paper_id']}"):
+                    st.session_state["selected_paper_id"] = item["paper_id"]
+                    st.session_state["current_page"] = "Paper Viewer"
+                    st.rerun()
     else:
         st.subheader("Library Papers")
         for paper in filtered:
@@ -79,7 +81,43 @@ def render(papers, status):
                 if paper.abstract:
                     st.write(paper.abstract[:280] + ("..." if len(paper.abstract) > 280 else ""))
                 if st.button("View Paper", key=f"library-open-{paper.paper_id}"):
-                    selected_paper_id = paper.paper_id
-                    st.session_state["selected_paper_id"] = selected_paper_id
+                    st.session_state["selected_paper_id"] = paper.paper_id
+                    st.session_state["current_page"] = "Paper Viewer"
+                    st.rerun()
 
-    return selected_paper_id or st.session_state.get("selected_paper_id")
+
+def _group_search_results(results: list[dict[str, object]]) -> list[dict[str, object]]:
+    grouped: dict[str, dict[str, object]] = {}
+    for item in results:
+        paper_id = str(item.get("paper_id"))
+        record = grouped.setdefault(
+            paper_id,
+            {
+                "paper_id": paper_id,
+                "paper_title": item.get("paper_title"),
+                "score": float(item.get("score", 0.0)),
+                "year": item.get("year"),
+                "venue": item.get("venue"),
+                "sections": [],
+                "_seen_sections": set(),
+            },
+        )
+        record["score"] = max(record["score"], float(item.get("score", 0.0)))
+        section_name = str(item.get("section", "Unknown Section"))
+        if section_name in record["_seen_sections"]:
+            continue
+        record["_seen_sections"].add(section_name)
+        snippet = str(item.get("text", "")).strip()
+        record["sections"].append(
+            {
+                "section": section_name,
+                "text": snippet[:240] + ("..." if len(snippet) > 240 else ""),
+            }
+        )
+
+    final = []
+    for record in grouped.values():
+        record.pop("_seen_sections", None)
+        final.append(record)
+    final.sort(key=lambda item: item["score"], reverse=True)
+    return final

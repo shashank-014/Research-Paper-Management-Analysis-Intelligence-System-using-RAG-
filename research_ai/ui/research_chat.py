@@ -20,11 +20,7 @@ def render(papers, paper_lookup):
         format_func=lambda value: "Full Library" if value == "Full Library" else paper_lookup[value].title,
     )
 
-    query = st.text_area(
-        "Ask a question",
-        placeholder="What datasets are used?",
-        height=120,
-    )
+    query = st.text_area("Ask a question", placeholder="What datasets are used?", height=120)
 
     if st.button("Run Research QA", key="run-chat"):
         if not query.strip():
@@ -36,8 +32,10 @@ def render(papers, paper_lookup):
             try:
                 result = answer_question(query, **kwargs)
                 st.session_state["last_chat_result"] = result
+                st.session_state.pop("last_chat_error", None)
             except Exception as exc:
                 st.session_state["last_chat_error"] = str(exc)
+                st.session_state.pop("last_chat_result", None)
 
     result = st.session_state.get("last_chat_result")
     error = st.session_state.get("last_chat_error")

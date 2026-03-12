@@ -84,4 +84,6 @@ def render(papers, paper_lookup, analytics_snapshot):
 
     if st.button("Ask Questions About This Paper", key=f"ask-{paper.paper_id}"):
         st.session_state["chat_paper_id"] = paper.paper_id
+        st.session_state["current_page"] = "Research Chat"
+        st.rerun()
     return paper.paper_id
