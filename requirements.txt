@@ -1,0 +1,11 @@
+﻿streamlit
+pydantic
+PyMuPDF
+pdfplumber
+faiss-cpu
+sentence-transformers
+groq
+networkx
+pandas
+numpy
+requests
