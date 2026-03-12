@@ -26,8 +26,19 @@ def load_library() -> list[ResearchPaper]:
     return papers
 
 
+def save_uploaded_files(uploaded_files) -> list[Path]:
+    RAW_PDF_DIR.mkdir(parents=True, exist_ok=True)
+    saved_paths: list[Path] = []
+    for uploaded in uploaded_files or []:
+        destination = RAW_PDF_DIR / uploaded.name
+        with destination.open("wb") as handle:
+            handle.write(uploaded.getbuffer())
+        saved_paths.append(destination)
+    return saved_paths
+
+
 def refresh_library(pdf_dir: str | Path | None = None, rebuild_index: bool = True) -> list[ResearchPaper]:
-    source_dir = Path(pdf_dir) if pdf_dir else Path.cwd()
+    source_dir = Path(pdf_dir) if pdf_dir else RAW_PDF_DIR
     papers = batch_parse_papers(source_dir, export_json=True, output_dir=PROCESSED_DIR)
     enrich_papers_with_keywords(papers)
     if rebuild_index and papers:
@@ -84,6 +95,7 @@ def system_status(papers: list[ResearchPaper]) -> dict[str, Any]:
         "groq_ready": _has_groq_secret(),
         "processed_dir": str(PROCESSED_DIR),
         "index_dir": str(INDEX_DIR),
+        "raw_pdf_dir": str(RAW_PDF_DIR),
     }
 
 

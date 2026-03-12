@@ -22,6 +22,7 @@ This system helps researchers:
 - Extracts page-wise text
 - Detects academic sections such as abstract, introduction, methods, results, discussion, conclusion, references, related work, and limitations
 - Builds structured `ResearchPaper` objects
+- Supports direct multi-file upload from the Streamlit UI
 
 ### 2. Semantic indexing
 - Section-aware chunking
@@ -34,6 +35,7 @@ This system helps researchers:
 - Grounded question answering
 - Cross-paper comparison
 - Source-aware responses
+- Uses `GROQ_API_KEY` from Streamlit secrets
 
 ### 4. Citation and trend intelligence
 - Citation graph construction with NetworkX
@@ -50,6 +52,7 @@ This system helps researchers:
 - Cross-paper comparison
 - Citation explorer
 - Trend dashboard
+- Multi-file PDF upload and refresh workflow
 
 ## Project Structure
 
@@ -84,13 +87,13 @@ README.md
 
 ## Setup
 
-## 1. Install dependencies
+### 1. Install dependencies
 
 ```powershell
 pip install -r requirements.txt
 ```
 
-## 2. Add Streamlit secrets
+### 2. Add Streamlit secrets
 
 Create `.streamlit/secrets.toml` and add:
 
@@ -110,15 +113,26 @@ It is not required for:
 - citation analytics
 - trend analytics
 
-## 3. Add papers
-
-Place research PDFs in the project root or update the refresh flow to point to a different folder.
-
-## 4. Run the app
+### 3. Run the app
 
 ```powershell
 streamlit run app.py
 ```
+
+## Uploading Papers
+
+You do not need to commit PDFs into the repo just to use the system.
+
+Inside the Streamlit app:
+1. Open the sidebar
+2. Use `Upload PDFs`
+3. Select multiple PDF files
+4. Click `Process Uploaded PDFs`
+
+The app will:
+- save uploads into `data/raw_pdfs`
+- parse them into structured JSON in `data/processed`
+- rebuild the FAISS index in `data/indices`
 
 ## Streamlit Deployment
 
@@ -128,15 +142,7 @@ Deploy this file:
 Why:
 - `app.py` is the root deployment entrypoint
 - it imports and runs the real UI from `research_ai/ui/app.py`
-- this avoids confusion when deploying on Streamlit Cloud
-
-## Local Workflow
-
-1. Start the Streamlit app.
-2. Use the sidebar action `Refresh Papers And Index`.
-3. The app will parse PDFs and export structured paper JSON into `data/processed`.
-4. It will rebuild the FAISS index in `data/indices`.
-5. Browse papers, ask questions, compare papers, and inspect analytics.
+- this avoids confusion during Streamlit deployment
 
 ## Main Entry Points
 
@@ -175,6 +181,7 @@ Implemented:
 - citation analytics
 - trend analytics
 - Streamlit UI
+- direct PDF upload workflow
 
 Still worth hardening further:
 - end-to-end runtime testing
