@@ -1,9 +1,17 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import streamlit as st
 
 from research_ai.ui import citation_explorer, paper_comparison, paper_dashboard, paper_viewer, research_chat, trend_dashboard
-from research_ai.ui.backend import build_analytics_snapshot, load_library, paper_lookup, refresh_library, save_uploaded_files, system_status
+from research_ai.ui.backend import (
+    build_analytics_snapshot,
+    load_library,
+    paper_lookup,
+    refresh_library,
+    save_uploaded_files,
+    summarize_chunks_for_uploaded_papers,
+    system_status,
+)
 
 PAGES = [
     "Paper Dashboard",
@@ -39,12 +47,26 @@ def _load_analytics_cached(papers_signature: tuple[str, ...]):
         }
 
 
+def _render_upload_summary() -> None:
+    summary = st.session_state.pop("upload_summary", None)
+    if not summary:
+        return
+
+    st.success(summary["message"])
+    if summary["chunk_breakdown"]:
+        st.caption("Chunks created per uploaded paper:")
+        for title, chunk_count in summary["chunk_breakdown"]:
+            st.write(f"- {title}: {chunk_count} chunk(s)")
+
+
 def main() -> None:
     if "current_page" not in st.session_state:
         st.session_state["current_page"] = "Paper Dashboard"
 
     st.sidebar.title("Research Intelligence")
     st.sidebar.caption("Semantic discovery, grounded QA, and research analytics in one workspace.")
+
+    _render_upload_summary()
 
     papers = _load_papers_cached()
     lookup = paper_lookup(papers)
@@ -62,10 +84,15 @@ def main() -> None:
             else:
                 try:
                     saved = save_uploaded_files(uploaded_files)
-                    refresh_library(rebuild_index=True)
+                    refreshed_papers = refresh_library(rebuild_index=True)
+                    chunk_summary = summarize_chunks_for_uploaded_papers(refreshed_papers, saved)
+                    total_chunks = sum(chunk_summary.values())
+                    st.session_state["upload_summary"] = {
+                        "message": f"Processed {len(saved)} uploaded PDF(s) and created {total_chunks} chunk(s).",
+                        "chunk_breakdown": list(chunk_summary.items()),
+                    }
                     st.cache_data.clear()
                     st.cache_resource.clear()
-                    st.success(f"Processed {len(saved)} uploaded PDF(s).")
                     st.rerun()
                 except Exception as exc:
                     st.error(f"Upload processing failed: {exc}")

@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
@@ -7,6 +7,7 @@ from research_ai.analytics.citation_graph import build_citation_graph
 from research_ai.analytics.keyword_extractor import enrich_papers_with_keywords, extract_keywords_for_papers
 from research_ai.analytics.trend_analysis import aggregate_by_venue, aggregate_topic_trends, identify_emerging_topics
 from research_ai.config import get_settings
+from research_ai.indexing.chunking import chunk_paper
 from research_ai.indexing.index_builder import index_papers, load_papers_from_json
 from research_ai.models import ResearchPaper
 from research_ai.parsing.paper_builder import batch_parse_papers
@@ -16,6 +17,8 @@ DATA_DIR = SETTINGS.data_dir
 PROCESSED_DIR = SETTINGS.processed_dir
 INDEX_DIR = SETTINGS.indices_dir
 RAW_PDF_DIR = SETTINGS.raw_pdf_dir
+CHUNK_MAX_TOKENS = 700
+CHUNK_OVERLAP_TOKENS = 80
 
 
 def load_library() -> list[ResearchPaper]:
@@ -44,6 +47,22 @@ def refresh_library(pdf_dir: str | Path | None = None, rebuild_index: bool = Tru
     if rebuild_index and papers:
         index_papers(papers, index_dir=INDEX_DIR, provider=SETTINGS.embedding_provider, model_name=SETTINGS.embedding_model)
     return papers
+
+
+def summarize_chunks_for_uploaded_papers(papers: list[ResearchPaper], uploaded_paths: list[Path]) -> dict[str, int]:
+    uploaded_names = {path.name.lower() for path in uploaded_paths}
+    summary: dict[str, int] = {}
+    for paper in papers:
+        if Path(paper.pdf_path).name.lower() not in uploaded_names:
+            continue
+        summary[paper.title] = len(
+            chunk_paper(
+                paper,
+                max_tokens=CHUNK_MAX_TOKENS,
+                overlap_tokens=CHUNK_OVERLAP_TOKENS,
+            )
+        )
+    return dict(sorted(summary.items(), key=lambda item: item[0].lower()))
 
 
 def paper_lookup(papers: list[ResearchPaper]) -> dict[str, ResearchPaper]:
@@ -102,6 +121,7 @@ def system_status(papers: list[ResearchPaper]) -> dict[str, Any]:
 def _has_groq_secret() -> bool:
     try:
         import streamlit as st
+
         return bool(st.secrets.get("GROQ_API_KEY"))
     except Exception:
         return False
