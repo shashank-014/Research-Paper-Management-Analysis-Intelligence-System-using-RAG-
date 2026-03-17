@@ -190,4 +190,3 @@ Why:
 ## Notes
 
 - LLM features use `st.secrets["GROQ_API_KEY"]`.
-- Replaced files are archived in `DELETED_FILES/` per project rules.
